@@ -61,15 +61,15 @@ bash scripts/mid360_ros.sh topics
 确认出现 `/livox/lidar` 和 `/livox/imu` 后录制，路径每次使用新名称。开始移动前保持雷达静止，并确认终端显示点云和 IMU 持续增加。按 Ctrl+C 停止，等待保存结果。
 
 ```bash
-mkdir -p ~/bags
-bash scripts/mid360_ros.sh record-raw ~/bags/mid360_001
+mkdir -p /mnt/f/Visual_Studying/bags
+bash scripts/mid360_ros.sh record-raw /mnt/f/Visual_Studying/bags/mid360_001
 ```
 
 录制器每秒显示两路数据数量和接收频率，连续 5 秒收不到数据时会警告。停止后会检查实际写入的消息数量，任一路为零会报告失败。已有目录不会被覆盖，请更换名称。
 
 ```bash
-bash scripts/mid360_ros.sh info ~/bags/mid360_001
-bash scripts/mid360_ros.sh inspect ~/bags/mid360_001
+bash scripts/mid360_ros.sh info /mnt/f/Visual_Studying/bags/mid360_001
+bash scripts/mid360_ros.sh inspect /mnt/f/Visual_Studying/bags/mid360_001
 ```
 
 `info` 显示 bag 总时长及话题数量，`inspect` 检查前几帧点云及 IMU。若没有数据，检查供电、USB 网卡、网卡地址、WSL 网络、防火墙和驱动日志。
@@ -104,7 +104,7 @@ bash scripts/mid360_ros.sh live --algorithm both --no-driver
 
 ```bash
 cd /mnt/f/Visual_Studying/Vision/Mid360
-bash scripts/mid360_ros.sh play ~/bags/mid360_001
+bash scripts/mid360_ros.sh play /mnt/f/Visual_Studying/bags/mid360_001
 ```
 
 回放结束后，在终端 1 按 Ctrl+C。重新启动并选择 `lio` 或 `livo2` 可重复使用同一份输入。也可以使用 `replay-compare` 代替 `play`，播放器会先暂停，按空格开始。开始时静止几秒，给算法完成初始化。
@@ -118,9 +118,9 @@ bash scripts/mid360_ros.sh fastlio weighted
 
 # 终端 2
 cd /mnt/f/Visual_Studying/Vision/Mid360
-bash scripts/mid360_ros.sh replay-compare ~/bags/mid360_001
+bash scripts/mid360_ros.sh replay-compare /mnt/f/Visual_Studying/bags/mid360_001
 ```
 
-如需保存 FAST-LIO 输出，在回放前另开一个终端，运行 `bash scripts/mid360_ros.sh record-odom ~/bags/odom_weighted_001`，回放结束后按 Ctrl+C 保存。换用 `baseline` 并为输出指定新名称，即可使用同一份 bag 比较。静态可信度默认在开始约 5 秒内采样，采样期间雷达应保持静止。如果采样无效或帧数不足，程序会退回基线权重，请检查终端日志。
+如需保存 FAST-LIO 输出，在回放前另开一个终端，运行 `bash scripts/mid360_ros.sh record-odom /mnt/f/Visual_Studying/bags/odom_weighted_001`，回放结束后按 Ctrl+C 保存。换用 `baseline` 并为输出指定新名称，即可使用同一份 bag 比较。静态可信度默认在开始约 5 秒内采样，采样期间雷达应保持静止。如果采样无效或帧数不足，程序会退回基线权重，请检查终端日志。
 
-录制文件、定位结果、日志和编译产物保存在本机，不属于仓库内容。
+示例中的新录制保存在 F 盘 `F:\Visual_Studying\bags`。已有录制仍可使用原来的 `~/bags` 路径。录制文件、定位结果、日志和编译产物保存在本机，不属于仓库内容。
