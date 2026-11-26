@@ -1,0 +1,26 @@
+启动WSL
+
+wsl -d Ubuntu
+
+终端1：启动mid360驱动
+
+bash /mnt/f/Visual_Studying/Mid360/scripts/mid360_ros.sh driver
+
+终端2：启动点云和IMU录制
+
+mkdir -p ~/bags
+bash /mnt/f/Visual_Studying/Mid360/scripts/mid360_ros.sh record-raw ~/bags/mid360_1m_20261126_a
+
+检查是否包含点云和miu
+bash /mnt/f/Visual_Studying/Mid360/scripts/mid360_ros.sh inspect ~/bags/mid360_1m_20261126_a
+bash /mnt/f/Visual_Studying/Mid360/scripts/mid360_ros.sh info ~/bags/mid360_1m_20261126_a
+
+实时定位
+# 单独运行 FAST-LIO 原版
+bash /mnt/f/Visual_Studying/Mid360/scripts/mid360_ros.sh live --algorithm lio
+
+# 单独运行 FAST-LIVO2 雷达＋IMU
+bash /mnt/f/Visual_Studying/Mid360/scripts/mid360_ros.sh live --algorithm livo2
+
+# 同时运行两套算法
+bash /mnt/f/Visual_Studying/Mid360/scripts/mid360_ros.sh live --algorithm both

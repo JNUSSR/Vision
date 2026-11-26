@@ -1,0 +1,18 @@
+# Runtime data and generated files
+**/build/
+**/install/
+**/log/
+**/Log/
+**/PCD/
+**/__pycache__/
+**/bin/
+**/lib/
+*.py[cod]
+*.db3
+*.mcap
+*.bag
+*.pcd
+*.lvx
+*.lvx2
+*.npz
+*.csv

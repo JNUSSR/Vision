@@ -1,0 +1,8 @@
+<CycloneDDS>
+  <Domain>
+    <General>
+      <MaxMessageSize>1400B</MaxMessageSize>
+      <FragmentSize>1200B</FragmentSize>
+    </General>
+  </Domain>
+</CycloneDDS>
