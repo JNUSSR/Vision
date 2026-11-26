@@ -18,7 +18,7 @@ EOF
 }
 
 project_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
-workspace="${MID360_WORKSPACE:-$HOME/mid360_ws}"
+workspace="${MID360_WORKSPACE:-$(dirname -- "$(dirname -- "$project_dir")")/mid360_ws}"
 livox_ws="${MID360_LIVOX_WS:-$workspace}"
 livo_ws="${MID360_LIVO_WS:-$workspace}"
 sdk_prefix="${MID360_SDK_PREFIX:-$livox_ws/deps/sdk}"
