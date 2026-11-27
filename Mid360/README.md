@@ -1,8 +1,67 @@
 # MID-360S 点云录制与定位
 
-本项目在 Windows 的 WSL 2 Ubuntu 中采集 Livox MID-360S 的点云和 IMU，支持 ROS 2 bag 录制、数据检查、离线回放，以及 FAST-LIO 和 FAST-LIVO2 雷达＋IMU 实时定位。FAST-LIO 另提供静态可信度实验模式。各项目来源与许可信息见 [SOURCES.md](SOURCES.md)。
+本项目在 Windows 的 WSL 2 Ubuntu 中采集 Livox MID-360S 的点云和 IMU，支持 ROS 2 bag 录制、数据检查、离线回放，以及 FAST-LIO 和 FAST-LIVO2 雷达＋IMU 实时定位。FAST-LIO 另提供静态可信度实验模式。
 
-## 项目结构与数据流
+各项目来源与许可信息见 [SOURCES.md](SOURCES.md)。
+
+看不懂的请询问 GPT/Claude/Gemini/Grok/GLM/Deepseek/Kimi/Qwen！它们很聪明。
+
+## 1.目录结构
+
+| 文件或文件夹 | 作用 |
+| --- | --- |
+| `README.md` | 项目结构、环境配置和操作说明。 |
+| `SOURCES.md` | 第三方源码来源、版本和许可证信息。 |
+| `.gitignore` | 指定 Git 通常忽略的录制数据、编译产物和缓存等文件。 |
+| `scripts/` | 编译、启动、录制、检查和实时显示的脚本。日常操作主要使用这里的 `mid360_ros.sh`。 |
+| `config/` | ROS 2 通信配置，`cyclonedds.xml` 用于 Cyclone DDS。 |
+| `livox_ros_driver2/` | Livox 的 ROS 2 驱动，接收设备数据并发布点云和 IMU 话题。 |
+| `Livox-SDK2/` | Livox 设备通信开发包，供驱动与雷达通信使用。 |
+| `fast_lio_comparison/` | FAST-LIO 算法源码、MID-360 配置，以及静态可信度实验功能。 |
+| `fast_livo2_ros2_src/` | FAST-LIVO2 的 ROS 2 版本源码和配置，当前项目使用雷达＋IMU 模式。 |
+| `mid360_live/` | 实时定位使用的 ROS 2 功能包，包含点云格式转换节点。 |
+| `rpg_vikit_rational_polynomial/` | FAST-LIVO2 使用的依赖库。 |
+
+### 1.1常用脚本
+
+##### 常用脚本在`scripts`文件夹下：
+
+| 脚本 | 作用 |
+| --- | --- |
+| `scripts/mid360_ros.sh` | 统一入口，提供 `driver`、`record-raw`、`inspect`、`live`、`play` 等命令。 |
+| `scripts/record_livox_bag.py` | 录制点云和 IMU，显示接收情况，并在停止时检查写入的消息数量。 |
+| `scripts/inspect_livox_bag.py` | 检查 bag 中的点云和 IMU 数据。 |
+| `scripts/live_coordinates.py` | 启动选定的算法和所需进程，显示实时坐标与延迟指标。 |
+| `scripts/build_workspace.sh` | 创建工作空间并编译 SDK、驱动和算法。首次配置或需要重新编译时使用。 |
+| `scripts/livox_custom_to_mid360_cloud.py` | Python 版本的 Livox 点云格式转换程序。实时定位入口使用 `mid360_live` 中的 C++ 转换节点。 |
+
+例如，`bash scripts/mid360_ros.sh live --algorithm livo2` 会调用实时坐标程序，并启动所需的驱动、点云转换节点和 FAST-LIVO2。
+
+### 1.2算法和配置文件
+
+##### 算法分为两类，一类是 [FAST_LIO](https://github.com/hku-mars/FAST_LIO)，另一类是 [FAST_LIVO2](https://github.com/hku-mars/FAST-LIVO2)。
+
+- `fast_lio_comparison/` 包含 FAST-LIO 算法代码。
+
+    `config/mid360.yaml` 保存 MID-360 参数，`launch/mapping.launch.py` 控制算法启动和静态可信度开关。`fastlio baseline` 使用基线模式，`fastlio weighted` 启用静态可信度实验。实时定位的 `--algorithm lio` 使用基线模式。
+
+    (静态可信度实验是指，将雷达启动后10s内变化较小的点云假设为“静态物体”，并且增加这部分点云的权重，但实验效果一般)
+
+- `fast_livo2_ros2_src/` 包含 FAST-LIVO2 算法代码和多种设备的配置。
+
+    当前实时程序使用 `config/mid360_recorded.yaml`，并启用点云和 IMU 输入。`mid360_live/src/livox_cloud_converter.cpp` 将 Livox 点云转换为 FAST-LIVO2 使用的格式。
+
+- `livox_ros_driver2/config/MID360s_config.json` 包含雷达与电脑的网络地址和端口示例。设备地址不同的时候，按下文“雷达网络”的方法复制并修改配置。
+
+`2026.11.26`：经过成员的测试，`FAST_LIOV2`普遍比`FAST_LIO`的精度更高，精度可达`±5mm`以内。但前者在实时定位任务中多次出现数据积累的情况，因此需要寻找触发原因以及更稳定的方案。
+
+### 1.3数据和编译产物的位置
+
+本仓库的 `Mid360` 文件夹保存源码和配置。下文示例将新录制的 bag 保存在 `F:\Visual_Studying\bags`，默认编译工作空间是 `F:\Visual_Studying\mid360_ws`。已有的 Ubuntu `~/bags` 数据仍可按原路径使用。实时定位日志和延迟记录默认保存在 Ubuntu 的 `~/.ros/log/` 下。
+
+如有需要，请自行更改配置地址。
+
+## 2.数据流
 
 雷达通过网线连接电脑，Livox 驱动接收雷达数据并发布 ROS 2 话题。`/livox/lidar` 包含点云，`/livox/imu` 包含 IMU 数据。这两路数据可以录制成 bag，也可以送入定位算法。已有 bag 可以回放，让多种算法使用同一份输入数据。
 
@@ -23,46 +82,7 @@ Livox SDK 和 ROS 2 驱动
 
 FAST-LIVO2 也接收 `/livox/imu`。实时坐标以各算法的首帧位置为原点，单位为厘米。
 
-### 根目录
-
-| 文件或文件夹 | 作用 |
-| --- | --- |
-| `README.md` | 项目结构、环境配置和操作说明。 |
-| `SOURCES.md` | 第三方源码来源、版本和许可证信息。 |
-| `.gitignore` | 指定 Git 通常忽略的录制数据、编译产物和缓存等文件。 |
-| `scripts/` | 编译、启动、录制、检查和实时显示的脚本。日常操作主要使用这里的 `mid360_ros.sh`。 |
-| `config/` | ROS 2 通信配置，`cyclonedds.xml` 用于 Cyclone DDS。 |
-| `livox_ros_driver2/` | Livox 的 ROS 2 驱动，接收设备数据并发布点云和 IMU 话题。 |
-| `Livox-SDK2/` | Livox 设备通信开发包，供驱动与雷达通信使用。 |
-| `fast_lio_comparison/` | FAST-LIO 算法源码、MID-360 配置，以及静态可信度实验功能。 |
-| `fast_livo2_ros2_src/` | FAST-LIVO2 的 ROS 2 版本源码和配置，当前项目使用雷达＋IMU 模式。 |
-| `mid360_live/` | 实时定位使用的 ROS 2 功能包，包含点云格式转换节点。 |
-| `rpg_vikit_rational_polynomial/` | FAST-LIVO2 使用的依赖库。 |
-
-### 常用脚本
-
-| 脚本 | 作用 |
-| --- | --- |
-| `scripts/mid360_ros.sh` | 统一入口，提供 `driver`、`record-raw`、`inspect`、`live`、`play` 等命令。 |
-| `scripts/record_livox_bag.py` | 录制点云和 IMU，显示接收情况，并在停止时检查写入的消息数量。 |
-| `scripts/inspect_livox_bag.py` | 检查 bag 中的点云和 IMU 数据。 |
-| `scripts/live_coordinates.py` | 启动选定的算法和所需进程，显示实时坐标与延迟指标。 |
-| `scripts/build_workspace.sh` | 创建工作空间并编译 SDK、驱动和算法。首次配置或需要重新编译时使用。 |
-| `scripts/livox_custom_to_mid360_cloud.py` | Python 版本的 Livox 点云格式转换程序。实时定位入口使用 `mid360_live` 中的 C++ 转换节点。 |
-
-例如，`bash scripts/mid360_ros.sh live --algorithm livo2` 会调用实时坐标程序，并启动所需的驱动、点云转换节点和 FAST-LIVO2。
-
-### 算法和配置文件
-
-- `fast_lio_comparison/src/` 和 `include/` 包含 FAST-LIO 算法代码，`config/mid360.yaml` 保存 MID-360 参数，`launch/mapping.launch.py` 控制算法启动和静态可信度开关。`fastlio baseline` 使用基线模式，`fastlio weighted` 启用静态可信度实验。实时定位的 `--algorithm lio` 使用基线模式。
-- `fast_livo2_ros2_src/` 包含 FAST-LIVO2 算法代码和多种设备的配置。当前实时程序使用 `config/mid360_recorded.yaml`，并启用点云和 IMU 输入。`mid360_live/src/livox_cloud_converter.cpp` 将 Livox 点云转换为 FAST-LIVO2 使用的格式。
-- `livox_ros_driver2/config/MID360s_config.json` 包含雷达与电脑的网络地址和端口示例。设备地址不同的时候，按下文“雷达网络”的方法复制并修改配置。
-
-### 数据和编译产物的位置
-
-本仓库的 `Mid360` 文件夹保存源码和配置。下文示例将新录制的 bag 保存在 `F:\Visual_Studying\bags`，默认编译工作空间是 `F:\Visual_Studying\mid360_ws`。已有的 Ubuntu `~/bags` 数据仍可按原路径使用。实时定位日志和延迟记录默认保存在 Ubuntu 的 `~/.ros/log/` 下。
-
-## 环境与编译
+## 3.环境与编译
 
 以下操作在 Ubuntu 22.04、ROS 2 Humble 中执行。先安装 ROS 2 Humble，并确认 `/opt/ros/humble/setup.bash` 存在。项目使用 Cyclone DDS。安装依赖后下载源码并编译。
 
@@ -82,7 +102,7 @@ bash scripts/build_workspace.sh
 
 已有分开的工作空间也可使用 `MID360_LIVOX_WS`、`MID360_LIVO_WS` 和 `MID360_SDK_PREFIX` 指定路径。脚本默认 ROS 路径可用 `MID360_ROS_SETUP` 修改。工作空间必须包含与此仓库源码兼容的驱动、算法及转换节点。
 
-## 雷达网络
+## 4.雷达网络
 
 雷达通过有线网口发送数据，可以使用 USB 转以太网适配器连接电脑。按设备实际配置设置电脑网卡与雷达 IP，并确保 WSL 能访问该网卡。这里的默认配置只是本次设备的例子。
 
@@ -100,7 +120,7 @@ nano ~/mid360_network.json
 export MID360_LIDAR_CONFIG=~/mid360_network.json
 ```
 
-## 录制和检查
+## 5.录制和检查
 
 每次打开 Ubuntu 后先进入仓库。以下各命令分别在独立终端执行。
 
@@ -134,7 +154,7 @@ bash scripts/mid360_ros.sh inspect /mnt/f/Visual_Studying/bags/mid360_001
 
 `info` 显示 bag 总时长及话题数量，`inspect` 检查前几帧点云及 IMU。若没有数据，检查供电、USB 网卡、网卡地址、WSL 网络、防火墙和驱动日志。
 
-## 实时坐标
+## 6.实时坐标
 
 启动后保持雷达静止，等待点云、IMU 和所选算法开始更新。程序通常会自动启动驱动，结束时按 Ctrl+C。
 
@@ -182,5 +202,3 @@ bash scripts/mid360_ros.sh replay-compare /mnt/f/Visual_Studying/bags/mid360_001
 ```
 
 如需保存 FAST-LIO 输出，在回放前另开一个终端，运行 `bash scripts/mid360_ros.sh record-odom /mnt/f/Visual_Studying/bags/odom_weighted_001`，回放结束后按 Ctrl+C 保存。换用 `baseline` 并为输出指定新名称，即可使用同一份 bag 比较。静态可信度默认在开始约 5 秒内采样，采样期间雷达应保持静止。如果采样无效或帧数不足，程序会退回基线权重，请检查终端日志。
-
-示例中的新录制保存在 F 盘 `F:\Visual_Studying\bags`。已有录制仍可使用原来的 `~/bags` 路径。录制文件、定位结果、日志和编译产物保存在本机，不属于仓库内容。
